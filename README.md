@@ -11,6 +11,7 @@ The tool depends on basic GNU shell programs as well as jq and curl.
 - awk
 - sort
 - curl [Download](https://curl.haxx.se/)
+- wget
 
 ## Usage
 
