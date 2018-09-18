@@ -33,4 +33,4 @@ You will be prompt for 2 things:
 - the csv field name
 - the value you want to compare to
 
-Once the optional filtering is done, the program will proceed to 
+Once the optional filtering is done, the program will proceed to zip the file and move it in your home folder
