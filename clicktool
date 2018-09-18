@@ -72,9 +72,23 @@ get_column_index() {
     fi
 }
 
-echo "================================="
-echo "Everflow click log file generator"
-echo "================================="
+echo ""
+echo ""
+echo "   _________      __   __                         "
+echo "  / ____/ (_)____/ /__/ /   ____  ____ _          "
+echo " / /   / / / ___/ //_/ /   / __ \/ __ \`/          "
+echo "/ /___/ / / /__/ ,< / /___/ /_/ / /_/ /           "
+echo "\____/_/_/\___/_/|_/_____/\____/\__, /            "
+echo "   ______                      /____/_            "
+echo "  / ____/__  ____  ___  _________ _/ /_____  _____"
+echo " / / __/ _ \/ __ \/ _ \/ ___/ __ \`/ __/ __ \/ ___/"
+echo "/ /_/ /  __/ / / /  __/ /  / /_/ / /_/ /_/ / /    "
+echo "\____/\___/_/ /_/\___/_/   \__,_/\__/\____/_/     "
+echo "                                                  "
+echo ""
+echo ""
+echo ""
+
 
 echo "Please enter a valid API key"
 
@@ -86,6 +100,8 @@ then
     exit
 fi
 
+echo ""
+
 echo "Please enter a from date (yyyy-mm-dd)"
 
 read from_date
@@ -96,6 +112,8 @@ then
     exit
 fi
 
+echo ""
+
 echo "Please enter a from date (yyyy-mm-dd)"
 
 read to_date
@@ -105,6 +123,8 @@ then
     echo "Invalid to date"
     exit
 fi
+
+echo ""
 
 echo "Please enter an affiliate id or press enter to continue"
 
@@ -122,14 +142,12 @@ payload="{
   \"timezone_id\": 67
 }"
 
-echo "$payload"
-
 uuid=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 
 working_directory="/tmp/$uuid"
 mkdir "$working_directory"
 
-echo "Downloading files to temporary folder, this may take a while"
+echo "Downloading files to temporary folder, this may take a while..."
 
 curl --request POST \
   --url 'https://api.eflow.team/v1/networks/reporting/raw/clicks' \
@@ -143,7 +161,7 @@ curr_dir=$(pwd)
 
 cd "$working_directory"
 
-echo "Merging all files, this may take a while"
+echo "Merging all files, this may take a while..."
 
 merged_file_name="merged.csv"                  # Fix the output name
 i=0                                       # Reset a counter
@@ -160,7 +178,7 @@ done
 
 csv_headers=$(head -n1 "$merged_file_name")
 
-echo "Sorting files by date, this may take a while"
+echo "Sorting files by date, this may take a while..."
 
 sorted_file_name="sorted.csv"
 
@@ -182,6 +200,8 @@ then
         exit 1
     fi
 
+    echo ""
+
     echo "Please enter a value for the provided filter"
 
     read filter_value
@@ -192,6 +212,8 @@ else
     echo "$csv_headers" > final.csv
     cat "$sorted_file_name" >> final.csv
 fi
+
+echo ""
 
 echo "Zipping file, this may take a while"
 
