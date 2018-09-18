@@ -1,0 +1,209 @@
+#/bin/bash
+
+get_column_index() {
+    param="${1//[$'\t\r\n ']}"
+
+    if [ "$param" = "transaction_id" ]; then
+      echo "1"
+    elif [ "$param" = "timestamp" ]; then
+      echo "2"
+    elif [ "$param" = "click_id" ]; then
+      echo "3"
+    elif [ "$param" = "network_id" ]; then
+      echo "4"
+    elif [ "$param" = "offer_id" ]; then
+      echo "5"
+    elif [ "$param" = "campaign_id" ]; then
+      echo "6"
+    elif [ "$param" = "affiliate_id" ]; then
+      echo "7"
+    elif [ "$param" = "creative_id" ]; then
+      echo "8"
+    elif [ "$param" = "account_manager_id" ]; then
+      echo "9"
+    elif [ "$param" = "category_id" ]; then
+      echo "10"
+    elif [ "$param" = "project_id" ]; then
+      echo "11"
+    elif [ "$param" = "tracking_url" ]; then
+      echo "12"
+    elif [ "$param" = "payout" ]; then
+      echo "13"
+    elif [ "$param" = "source_id" ]; then
+      echo "14"
+    elif [ "$param" = "sub1" ]; then
+      echo "15"
+    elif [ "$param" = "sub2" ]; then
+      echo "16"
+    elif [ "$param" = "sub3" ]; then
+      echo "17"
+    elif [ "$param" = "sub4" ]; then
+      echo "18"
+    elif [ "$param" = "sub5" ]; then
+      echo "19"
+    elif [ "$param" = "referrer" ]; then
+      echo "20"
+    elif [ "$param" = "previous_offer_id" ]; then
+      echo "21"
+    elif [ "$param" = "previous_transaction_id" ]; then
+      echo "22"
+    elif [ "$param" = "error_code" ]; then
+      echo "23"
+    elif [ "$param" = "user_ip" ]; then
+      echo "24"
+    elif [ "$param" = "http_user_agent" ]; then
+      echo "25"
+    elif [ "$param" = "http_accept_language" ]; then
+      echo "26"
+    elif [ "$param" = "idfa" ]; then
+      echo "27"
+    elif [ "$param" = "idfa_md5" ]; then
+      echo "28"
+    elif [ "$param" = "idfa_sha1" ]; then
+      echo "29"
+    elif [ "$param" = "google_aid" ]; then
+      echo "30"
+    elif [ "$param" = "google_aid_md5" ]; then
+      echo "31"
+    elif [ "$param" = "google_aid_sha1" ]; then
+      echo "32"
+    else
+      echo ""
+    fi
+}
+
+echo "================================="
+echo "Everflow click log file generator"
+echo "================================="
+
+echo "Please enter a valid API key"
+
+read api_key
+
+if [ -z "$api_key" ]
+then
+    echo "Invalid API key provided"
+    exit
+fi
+
+echo "Please enter a from date (yyyy-mm-dd)"
+
+read from_date
+
+if [[ ! $from_date =~ ^20[1-2][0-9]-[0-1][0-9]-[0-3][0-9]$ ]]
+then
+    echo "Invalid from date"
+    exit
+fi
+
+echo "Please enter a from date (yyyy-mm-dd)"
+
+read to_date
+
+if [[ ! $to_date =~ ^20[1-2][0-9]-[0-1][0-9]-[0-3][0-9]$ ]]
+then
+    echo "Invalid to date"
+    exit
+fi
+
+echo "Please enter an affiliate id or press enter to continue"
+
+read affiliate_id
+
+if [ -z "$affiliate_id" ]
+then
+    affiliate_id="0"
+fi
+
+payload="{
+  \"network_affiliate_id\": $affiliate_id,
+  \"from\": \"$from_date\",
+  \"to\": \"$to_date\",
+  \"timezone_id\": 67
+}"
+
+echo "$payload"
+
+uuid=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+
+working_directory="/tmp/$uuid"
+mkdir "$working_directory"
+
+echo "Downloading files to temporary folder, this may take a while"
+
+curl --request POST \
+  --url 'https://api.eflow.team/v1/networks/reporting/raw/clicks' \
+  --header "x-eflow-api-key: $api_key" \
+  --header 'content-type: application/json' \
+  --data "$payload" \
+  | jq '.click_logs[].url' \
+  | xargs -I {} wget -P "$working_directory" {}
+
+curr_dir=$(pwd)
+
+cd "$working_directory"
+
+echo "Merging all files, this may take a while"
+
+merged_file_name="merged.csv"                  # Fix the output name
+i=0                                       # Reset a counter
+for filename in ./*.csv; do 
+ if [ "$filename"  != "$merged_file_name" ] ;      # Avoid recursion 
+ then 
+   if [[ $i -eq 0 ]] ; then 
+      head -1  $filename >   $merged_file_name # Copy header if it is the first file
+   fi
+   tail -n +2  $filename >>  $merged_file_name # Append from the 2nd line each file
+   i=$(( $i + 1 ))                        # Increase the counter
+ fi
+done
+
+csv_headers=$(head -n1 "$merged_file_name")
+
+echo "Sorting files by date, this may take a while"
+
+sorted_file_name="sorted.csv"
+
+LC_ALL=C sort -t, -k2 "$merged_file_name" > "$sorted_file_name"
+
+rm merged.csv
+
+echo "Please enter a column name to filter on, or press enter to continue"
+
+read filter_column
+filter_value=""
+
+if [ ! -z "$filter_column" ]
+then
+    idx=$(get_column_index "$filter_column")
+
+    if [ -z "$idx" ]; then
+        echo "Invalid column supplied"
+        exit 1
+    fi
+
+    echo "Please enter a value for the provided filter"
+
+    read filter_value
+
+    echo "$csv_headers" > final.csv
+    awk -v filter="$filter_value" -F '","'  "BEGIN {FS=\",\"} { if (\$$idx == filter)  print }" "$sorted_file_name" >> final.csv
+else
+    echo "$csv_headers" > final.csv
+    cat "$sorted_file_name" >> final.csv
+fi
+
+echo "Zipping file, this may take a while"
+
+zip "$uuid.zip" final.csv
+
+mv "$uuid.zip" "$HOME/$uuid.zip"
+
+echo "Final file can be found in your home directory under the name $uuid.zip"
+
+#cho "Cleaning up... this make take a while"
+
+cd "$curr_dir"
+
+rm -rf "$working_directory"
+
