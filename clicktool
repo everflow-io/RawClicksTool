@@ -186,32 +186,43 @@ LC_ALL=C sort -t, -k2 "$merged_file_name" > "$sorted_file_name"
 
 rm merged.csv
 
-echo "Please enter a column name to filter on, or press enter to continue"
+continue_filtering=1
 
-read filter_column
-filter_value=""
+filtered_file_name="filtered.csv"
+filter_working_file_name="filtering.csv"
+cp "$sorted_file_name" "$filter_working_file_name"
 
-if [ ! -z "$filter_column" ]
-then
-    idx=$(get_column_index "$filter_column")
+while [[ $continue_filtering -eq 1 ]]; do
+  echo "Please enter a column name to filter on, or press enter to quit filtering"
 
-    if [ -z "$idx" ]; then
-        echo "Invalid column supplied"
-        exit 1
-    fi
+  read filter_column
+  filter_value=""
 
-    echo ""
+  if [ ! -z "$filter_column" ]
+  then
+      idx=$(get_column_index "$filter_column")
 
-    echo "Please enter a value for the provided filter"
+      if [ -z "$idx" ]; then
+          echo "Invalid column supplied"
+          exit 1
+      fi
 
-    read filter_value
+      echo ""
 
-    echo "$csv_headers" > final.csv
-    awk -v filter="$filter_value" -F '","'  "BEGIN {FS=\",\"} { if (\$$idx == filter)  print }" "$sorted_file_name" >> final.csv
-else
-    echo "$csv_headers" > final.csv
-    cat "$sorted_file_name" >> final.csv
-fi
+      echo "Please enter a value for the provided filter"
+
+      read filter_value
+
+      awk -v filter="$filter_value" -F '","'  "BEGIN {FS=\",\"} { if (\$$idx == filter)  print }" "$filter_working_file_name" >> "$filtered_file_name"
+
+      cat "$filtered_file_name" > "$filter_working_file_name"
+  else
+      continue_filtering=0
+  fi
+done
+
+echo "$csv_headers" > final.csv
+cat "$filtered_file_name" >> final.csv
 
 echo ""
 
@@ -227,5 +238,5 @@ echo "Final file can be found in your home directory under the name $uuid.zip"
 
 cd "$curr_dir"
 
-rm -rf "$working_directory"
+#rm -rf "$working_directory"
 
